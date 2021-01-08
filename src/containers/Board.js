@@ -1,66 +1,74 @@
-import React, { Component } from "react";
+import React from "react";
 import styled from "styled-components";
+import withDataFetching from "../withDataFetching";
 import Lane from "../components/Lane/Lane";
 
-class Board extends Component {
+const BoardWrapper = styled.div`
+  display: flex;
+  justify-content: space-between;
+  flex-direction: row;
+  margin: 5%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+class Board extends React.Component {
   constructor() {
     super();
     this.state = {
-      data: [],
-      loading: true,
-      error: "",
+      tickets: [],
     };
   }
 
-  async componentDidMount() {
-    try {
-      const tickets = await fetch("../../assets/data.json");
-      const ticketsJSON = await tickets.json();
-
-      if (ticketsJSON) {
-        this.setState({
-          data: ticketsJSON,
-          loading: false,
-        });
-      }
-    } catch (error) {
-      this.setState({
-        loading: false,
-        error: error.message,
-      });
+  componentDidUpdate(prevProps) {
+    if (prevProps.data !== this.props.data) {
+      this.setState({ tickets: this.props.data });
     }
   }
 
-  render() {
-    const BoardWrapper = styled.div`
-      display: flex;
-      justify-content: space-between;
-      flex-direction: row;
-      margin: 5%;
+  onDragStart = (e, id) => {
+    e.dataTransfer.setData("id", id);
+  };
 
-      @media (max-width: 768px) {
-        flex-direction: column;
+  onDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  onDrop = (e, laneId) => {
+    const id = e.dataTransfer.getData("id");
+
+    const tickets = this.state.tickets.filter((ticket) => {
+      if (ticket.id === parseInt(id)) {
+        ticket.lane = laneId;
       }
-    `;
+      return ticket;
+    });
 
-    const { data, loading, error } = this.state;
+    this.setState({
+      ...this.state,
+      tickets,
+    });
+  };
 
-    const lanes = [
-      { id: 1, title: "To Do" },
-      { id: 2, title: "In Progress" },
-      { id: 3, title: "Review" },
-      { id: 4, title: "Done" },
-    ];
-
+  render() {
+    const { lanes, loading, error } = this.props;
     return (
       <BoardWrapper>
         {lanes.map((lane) => (
           <Lane
             key={lane.id}
+            laneId={lane.id}
             title={lane.title}
             loading={loading}
             error={error}
-            tickets={data.filter((ticket) => ticket.lane === lane.id)}
+            onDragStart={this.onDragStart}
+            onDragOver={this.onDragOver}
+            onDrop={this.onDrop}
+            tickets={this.state.tickets.filter(
+              (ticket) => ticket.lane === lane.id
+            )}
           />
         ))}
       </BoardWrapper>
@@ -68,4 +76,4 @@ class Board extends Component {
   }
 }
 
-export default Board;
+export default withDataFetching(Board);
